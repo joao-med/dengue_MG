@@ -12,22 +12,24 @@ library(ggmap)
 library(RColorBrewer)
 library(xlsx)
 library(patchwork)
+library(gridExtra)
 theme_set(theme_bw())
-
+setwd("final_codes/final_final_codes")
 # loading data
 data <- read_rds("00.data/data.rds")
 grid <- read.csv("mg_grid.csv") %>% dplyr::select(-X)
 data <- data %>% mutate(code = code %>% as.numeric()) %>% left_join(grid) 
 # Filter for microregions with more than 10.000 cases in the span of time analysed
-filter <- data %>% group_by(microregion_name) %>%
+filter <- data %>% group_by(code) %>%
   summarise(sum = sum(cases)) %>%
   filter (sum >= 10000)
 # Map minas ---------------------------------------------------------------
 ## Minas gerais geometry
 MG <- read_micro_region() %>% filter(abbrev_state %in% "MG")
 
-MG %>% mutate(cat = ifelse(name_micro %in% filter$microregion_name, "Included", "Excluded"),
-              id = 1:66) %>%
+MG <- MG %>% mutate(cat = ifelse(code_micro %in% filter$code, "Included", "Excluded"),
+                    id = 1:66)
+p1 <- MG %>% 
   ggplot()+
   geom_sf(aes(fill = cat))+
   geom_sf_text(aes(label = id),color = 'white')+ 
@@ -37,9 +39,14 @@ MG %>% mutate(cat = ifelse(name_micro %in% filter$microregion_name, "Included", 
   xlab("")+
   ylab("")+
   theme_minimal()
-ggsave("03.figs/fig01.png", height = 7, width = 7)
+p1+   tableGrob (cbind(MG$id[1:22],
+                 MG$name_micro[1:22],
+                 MG$id[23:44],
+                 MG$name_micro[23:44],
+                 MG$id[45:66],
+                 MG$name_micro[45:66]))
+ggsave("03.figs/fig01.png", height = 7, width = 16)
 # Dengue ------------------------------------------------------------------
-
 # sum of cases
 summary(data)
 data$cases %>% sum
@@ -77,7 +84,7 @@ p3 <- ggplot(data=data,aes(x=as.factor(weekday), y=cases)) +
   xlab ("weekday") +
   theme(axis.text.x=element_text(angle=45, hjust=1))+
   ggtitle('C')
-  #Sunday and Saturday are the days with the least cases
+#Sunday and Saturday are the days with the least cases
 # Heatmap of rate by month and year
 p4 <- data %>% mutate(year = year %>% as.factor) %>% 
   group_by(year, month, microregion_name) %>%
@@ -159,17 +166,12 @@ for (i in data$microregion_name  %>% unique) {
   P100 = round(quantile(temp,probs=1),1) %>% tibble("100%" = .)
   
   lil_table <- tibble(i,
-                       Minimum = summary_temp$Min,
-                       P2.5,
-                       P10,
-                       P25,
-                       Median = summary_temp$Median,
-                       Mean = summary_temp$Mean,
-                       P50,
-                       P75,
-                       P90,
-                       P97.5,
-                       Max = summary_temp$Max)
+                      Minimum = summary_temp$Min,
+                      P2.5,P10,P25,
+                      Median = summary_temp$Median,
+                      Mean = summary_temp$Mean,
+                      P50,P75,P90,P97.5,
+                      Max = summary_temp$Max)
   
   big_table <- bind_rows(lil_table, big_table)
 }
@@ -179,11 +181,9 @@ write.xlsx(big_table, "01.descriptive/table_temp.xlsx")
 p1 <- yearly_ERA_mg %>% ggplot(aes(fill = t_min)) +
   geom_sf ()+
   scale_fill_gradientn(name = "TºC min", colours=brewer.pal(9, "Greys"),
-                       breaks = c(14, 16, 18, 20), labels = c('14ºC', '16ºC', '18ºC', '20ºC'))+
-  # theme(legend.title = element_blank())+
-  # ylab ("")+
+                       breaks = c(14, 16, 18, 20), labels = c('14ºC', '16ºC', '18ºC', '20ºC')) +
   ggtitle("A")
-  # create a list with regional datasets
+# create a list with regional datasets
 regions <- data$microregion_name %>% unique()
 data_region <- lapply(regions,function(x) data[data$microregion_name==x,])
 names(data_region) <- regions
@@ -205,7 +205,6 @@ p2 <- ranges_data %>%
   theme(axis.title.y = element_blank())+
   coord_flip()+
   ggtitle("B")
-  # theme(axis.text.y=element_text(angle=, hjust=1))
 
 p1/p2
 ggsave('03.figs/fig04.png', height = 11)
