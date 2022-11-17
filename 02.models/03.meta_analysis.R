@@ -30,26 +30,6 @@ names(data) <- regions
 n <- length(regions)
 
 # TEMPERATURE DISTRIBUTION
-rowMeans(sapply(data,function(x) summary(x$t_min)))
-
-# temperature ranges for each region
-ranges_data <- t(sapply(data, function(x) range(x$t_min,na.rm=T)))
-ranges_data <- data.frame(ranges_data)
-ranges_data$indice <- 1:length(regions)
-ranges_data$region <- row.names(ranges_data)
-ranges_data$temperature <- (ranges_data$X1+ranges_data$X2)/2 
-ranges_data <-  ranges_data %>% as.tibble()
-
-ranges_data %>% 
-  ggplot(aes(x = reorder(region,temperature), y = temperature))+
-  geom_point()+
-  geom_errorbar(aes(ymin= X1, ymax = X2),
-                width = 0.8)+
-  ylab ("Temperature (ºC)")+
-  xlab ("Microregions")+
-  coord_flip()
-ggsave("03.figs/temp_min_range.png", dpi = 300)
-
 # percentiles 10 e 90 of temperature distribution
 P2.5 <- round(quantile(data_complete$t_min, probs = 0.025),1)
 P2.5
@@ -63,10 +43,6 @@ P97.5
 # Temperature range for all microregions
 bound <- round(colMeans(ranges_data[,c(1,2)]),1)
 bound
-# the mean temperature is 16ºC but this was just a coincidence, as the temperature
-# for calculations was decided apriori 
-cen <- round(mean(bound))
-cen
 
 load("02.models/output/Sall_meta.RData")
 load("02.models/output/yall_meta.RData")
@@ -91,31 +67,12 @@ cpall_data <- crosspred(bvar,coef=coef(mvall),
                         by=0.1,from=bound[1],to=bound[2],cen=16)
 summary(cpall_data)
 # PLOT OVERALL CUMULLATIVE
-png(filename = paste0("03.figs/overall_cumulative_risk.png"), 
+png(filename = paste0("03.figs/fig05.png"), 
     height = 5, width = 7, 
     units = 'in', res = 300)
 
 par(mar=c(4,4,4,4),mfrow=c(1,1))
 plot(cpall_data,type="l",ylab="RR",xlab="TºC",main="")
-abline(v=16)
-dev.off()
-#sup
- options(warn=-1)
-
-# PLOT OF AVERAGE AND BLUP ESTIMATES
-blup_data <- blup(mvall,vcov=TRUE)
-png(filename = paste0("03.figs/cumulative_risk_blup.png"), 
-    height = 5, width = 7, 
-    units = 'in', res = 300)
-plot(cpall_data,type="n",ylab="RR",xlab="TºC",main="", ylim = c(0,2))
-for(i in unique(data_complete$microregion_name)) {
-  lines(crosspred(bvar,coef=blup_data[[i]]$blup,vcov=blup_data[[i]]$vcov,
-                  model.link="log",
-                  from=filter(ranges_data ,region == i)[1,1] %>% as.numeric(),
-                  to=filter(ranges_data ,region == i)[1,2] %>% as.numeric(),
-                  cen=16),col="gray50",lty=2,lwd=0.1)
-}
-lines(cpall_data,type="l",col=1,lty=1,lwd=2)
 abline(v=16)
 dev.off()
 

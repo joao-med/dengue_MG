@@ -1,10 +1,9 @@
+## MULTIVARIATE META-REGRESSION
 library(tidyverse)
 library(mgcv)
 library(mvmeta) 
+library(dlnm)
 options(scipen=999)
-###############################
-## MULTIVARIATE META-REGRESSION
-###############################
 # Loading data for meta regression
 data_mt <- read_rds("00.data/data.rds") 
 filter <- data_complete %>% group_by(microregion_name) %>% 
@@ -20,8 +19,7 @@ fwald <- function(model,var) {
   vcov <- vcov(model)[ind,ind]
   waldstat <- coef%*%solve(vcov)%*%coef
   df <- length(coef)
-  return(1-pchisq(waldstat,df))
-}
+  return(1-pchisq(waldstat,df))}
 
 # pop
 meanpop <- sapply(data_mt, function(x) mean(x$pop,na.rm=T))
@@ -72,21 +70,21 @@ mvurban <- update(mvall,.~meanurban)
 wald_urban <- round(fwald(mvurban,"meanurban"),3)%>% tibble()
 summary(mvurban)
 
-# lat
+# latitude
 meanlat <- sapply(data_mt, function(x) mean(x$lat,na.rm=T))
 round(quantile(meanlat,na.rm=T,c(10,90)/100),2)
 mvlat <- update(mvall,.~meanlat)
 wald_lat <- round(fwald(mvlat,"meanlat"),3)%>% tibble()
 summary(mvlat)
 
-# long
+# longitude
 meanlon <- sapply(data_mt, function(x) mean(x$lon,na.rm=T))
 round(quantile(meanlon,na.rm=T,c(10,90)/100),2)
 mvlong <- update(mvall,.~meanlon)
 wald_long <- round(fwald(mvlong,"meanlon"),3)%>% tibble()
 summary(mvlong)
 
-variables <- c('Population', 'GDP', 'Per capita GDP', 'elevation', 'Treated Water Access',
+variables <- c('Population', 'GDP', 'Per capita GDP', 'Elevation', 'Treated Water Access',
                'Waste Management', 'Urban Population', 'Latitute', 'Longitude')
 wald_values <- bind_rows(wald_pop,wald_GDP,wald_pcGDP,wald_elev,wald_water,
                          wald_waste,wald_urban,wald_lat,wald_long) 
@@ -103,13 +101,13 @@ pred.elev <- predict(mvelev,data.frame(val.elev),vcov=T)
 cpall_data_elev10 <- crosspred(bvar,coef=pred.elev[[1]]$fit,vcov=pred.elev[[1]]$vcov,model.link="log",by=0.1,cen=16)
 cpall_data_elev90 <- crosspred(bvar,coef=pred.elev[[2]]$fit,vcov=pred.elev[[2]]$vcov,model.link="log",by=0.1,cen=16)
 # saving image
-png(filename = paste0("03.figs/metaregression_elevation.png"), 
+png(filename = paste0("03.figs/fig06.png"), 
     height = 5, width = 7, 
     units = 'in', res = 300)
-par(mar=c(2,2,2,2),mfrow=c(1,1))
-plot(cpall_data,type="l",ylab="RR",xlab="T?C",main="")
-lines(cpall_data_elev10,type="l",ylab="RR",xlab="T?C",main="P10",col="blue",ci="lines")
-lines(cpall_data_elev90,type="l",ylab="RR",xlab="T?C",main="P90",col="red",ci="lines")
+
+plot(cpall_data,type="l",ylab="RR",xlab="TºC",main="")
+lines(cpall_data_elev10,type="l",ylab="RR",xlab="TºC",main="P10",col="blue",ci="lines")
+lines(cpall_data_elev90,type="l",ylab="RR",xlab="TºC",main="P90",col="red",ci="lines")
 dev.off()
 
 # Estimates for p10 of elevation
