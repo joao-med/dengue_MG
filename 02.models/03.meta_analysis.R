@@ -7,7 +7,10 @@ library(dlnm)
 library(mvmeta) 
 library(splines)
 library(tidyverse)
-library(png)
+library(plotrix)
+library(gridExtra)
+theme_set(theme_minimal())
+
 
 # loading data
 data_complete <- read_rds("00.data/data.rds")
@@ -17,6 +20,7 @@ filter <- data_complete %>% group_by(microregion_name) %>%
   filter (sum >= 10000)
 
 data_complete <- data_complete %>% filter(microregion_name %in% filter$microregion_name)
+cen  <-  round(data$t_min %>% mean,0)
 # Creating cross-basis
 cb_t_min <- crossbasis(data_complete$t_min, lag = 22, 
                        argvar=list(fun="ns",df=3),
@@ -60,30 +64,38 @@ regall <- apply(yall,1,function(x) exp(bvar%*%x))
 # OVERALL CUMULATIVE SUMMARY FOR THE MAIN MODEL
 mvall <- mvmeta(yall~1,Sall,method="reml")
 summary(mvall)
-
 # OVERALL CUMULATIVE SUMMARY ASSOCIATION FOR MAIN MODEL
 cpall_data <- crosspred(bvar,coef=coef(mvall),
                         vcov=vcov(mvall),model.link="log",
-                        by=0.1,from=bound[1],to=bound[2],cen=16)
+                        by=0.1,from=bound[1],to=bound[2],cen=cen)
 summary(cpall_data)
 # PLOT OVERALL CUMULLATIVE
-png(filename = paste0("03.figs/fig05.png"), 
-    height = 5, width = 7, 
-    units = 'in', res = 300)
+tibble(fit = cpall_data$allRRfit, low = cpall_data$allRRlow,
+       high = cpall_data$allRRhigh, temp = cpall_data$predvar) %>% 
+  ggplot(aes(x =temp , y = fit))+
+  geom_line()+
+  geom_ribbon(aes(temp, ymin = low, ymax = high),
+              fill = "grey", alpha = 0.5)+
+  geom_vline(xintercept = cen)+
+  geom_hline(yintercept = 1)+
+  xlab("TºC")+
+  ylab("RR")
+# 
+# p1 + tableGrob(tab_meta, rows = c("",'','',''))
+# ggsave(filename = paste0("03.figs/fig05.png"), 
+#            height = 5, width = 7, 
+#            units = 'in', dpi = 300)
 
-par(mar=c(4,4,4,4),mfrow=c(1,1))
-plot(cpall_data,type="l",ylab="RR",xlab="TºC",main="")
-abline(v=16)
-dev.off()
 
 # OVERALL EFFECTS AT PREDICTOR LEVELS (P2.5, P10, P90, P97.5)
 quantis <- round(quantile(data_complete$t_min, probs = c(0.025,0.1,0.9,0.975)),1) %>% tibble(Temperature = .)
-p1 <- round(with(cpall_data,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P2.5),]),2) %>% t() %>% as.tibble()
-p2 <- round(with(cpall_data,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P10),]),2)%>% t() %>% as.tibble()
-p3 <- round(with(cpall_data,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P90),]),2)%>% t() %>% as.tibble()
-p4 <- round(with(cpall_data,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P97.5),]),2)%>% t() %>% as.tibble()
+p1 <- round(with(cpall_data,cbind(allRRlow,allRRfit,allRRhigh)[as.character(P2.5),]),2) %>% t() %>% as.tibble()
+p2 <- round(with(cpall_data,cbind(allRRlow,allRRfit,allRRhigh)[as.character(P10),]),2)%>% t() %>% as.tibble()
+p3 <- round(with(cpall_data,cbind(allRRlow,allRRfit,allRRhigh)[as.character(P90),]),2)%>% t() %>% as.tibble()
+p4 <- round(with(cpall_data,cbind(allRRlow,allRRfit,allRRhigh)[as.character(P97.5),]),2)%>% t() %>% as.tibble()
 # creating table with the data
-tab_meta <- bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'), bind_rows(p1,p2,p3,p4))
+tab_meta <- bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'), bind_rows(p1,p2,p3,p4)) %>% 
+  mutate(RR = paste0(allRRfit," (",allRRlow,"—",allRRhigh,")")) %>% select(c(1,2,6)) 
 write.csv(tab_meta, "02.models/tab_meta.csv")
 
 

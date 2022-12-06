@@ -23,6 +23,8 @@ yall <- matrix(NA,length(data$microregion_name %>% unique),
 # (CO)VARIANCE MATRICES
 Sall <- vector("list",length(data$microregion_name %>% unique))
 names(Sall) <- data$microregion_name %>% unique
+# Defining comparative temperature 
+cen  <-  round(data$t_min %>% mean,0)
 for (i in unique(data$microregion_name)){
   print(i)
   # selecting city ----------------------------------------------------------
@@ -33,7 +35,7 @@ for (i in unique(data$microregion_name)){
   # -------------------------------------------------------------------------
   ## Creating cross-basis of min temperature (lags up to 22 days)
   temp <- data_city$t_min
-  cb_t_min <- crossbasis(temp, lag = 22, 
+  cb_t_min <- crossbasis(temp, lag = 25, 
                          argvar=list(fun="ns",df=3),
                          arglag=list(fun="poly",degree=3))
   # Applying GAM with variables selected beforehand --------------------------
@@ -46,7 +48,7 @@ for (i in unique(data$microregion_name)){
                           ".RData"))
   
   # Reducing models ---------------------------------------------------------
-  crall <- crossreduce(cb_t_min,mod,cen=16)
+  crall <- crossreduce(cb_t_min,mod,cen=cen)
   yall[i,] <- coef(crall)
   Sall[[i]] <- vcov(crall)
  }
@@ -68,7 +70,7 @@ for (i in 1:38){
   ## Prediction model with 16 degrees Celsius
   
   pred <- crosspred(basis=cb_t_min,model=mod,
-                    by=0.1,cumul=TRUE, cen = 16)
+                    by=0.1,cumul=TRUE, cen = cen)
   
   ## RR accumulated total for the entire period for percentiles 2.5/10/90/97.5
   percentile_2.5 <- round(cbind(pred$allRRfit,

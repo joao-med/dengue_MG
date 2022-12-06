@@ -4,12 +4,15 @@ library(mgcv)
 library(mvmeta) 
 library(dlnm)
 options(scipen=999)
+theme_set(theme_bw())
+
 # Loading data for meta regression
 data_mt <- read_rds("00.data/data.rds") 
-filter <- data_complete %>% group_by(microregion_name) %>% 
+filter <- data_mt %>% group_by(microregion_name) %>% 
   summarise(sum = sum(cases)) %>%
   filter (sum >= 10000)
 data_mt <- data_mt %>% filter(microregion_name %in% filter$microregion_name)
+cen  <-  round(data_mt$t_min %>% mean,0)
 data_mt <- lapply(regions,function(x) data_mt[data_mt$microregion_name==x,])
 names(data_mt) <- regions
 # Wald test
@@ -98,17 +101,14 @@ write.csv(wald_tab, "02.models/wald_tab.csv" )
 val.elev <- round(quantile(meanelev,na.rm=T,c(10,90)/100),1)
 val.elev
 pred.elev <- predict(mvelev,data.frame(val.elev),vcov=T)
-cpall_data_elev10 <- crosspred(bvar,coef=pred.elev[[1]]$fit,vcov=pred.elev[[1]]$vcov,model.link="log",by=0.1,cen=16)
-cpall_data_elev90 <- crosspred(bvar,coef=pred.elev[[2]]$fit,vcov=pred.elev[[2]]$vcov,model.link="log",by=0.1,cen=16)
-# saving image
-png(filename = paste0("03.figs/fig06.png"), 
-    height = 5, width = 7, 
-    units = 'in', res = 300)
+cpall_data_elev10 <- crosspred(bvar,coef=pred.elev[[1]]$fit,vcov=pred.elev[[1]]$vcov,model.link="log",by=0.1,cen=cen)
+cpall_data_elev90 <- crosspred(bvar,coef=pred.elev[[2]]$fit,vcov=pred.elev[[2]]$vcov,model.link="log",by=0.1,cen=cen)
+# plotting image
 
 plot(cpall_data,type="l",ylab="RR",xlab="TºC",main="")
 lines(cpall_data_elev10,type="l",ylab="RR",xlab="TºC",main="P10",col="blue",ci="lines")
 lines(cpall_data_elev90,type="l",ylab="RR",xlab="TºC",main="P90",col="red",ci="lines")
-dev.off()
+text(10,1.54,'I² = 53.3%')
 
 # Estimates for p10 of elevation
 quantis <- round(quantile(data_complete$t_min, probs = c(0.025,0.1,0.9,0.975)),1) %>% tibble(Temperature = .)
@@ -116,7 +116,10 @@ p1 <- round(with(cpall_data_elev10,cbind(allRRfit,allRRlow,allRRhigh)[as.charact
 p2 <- round(with(cpall_data_elev10,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P10),]),2) %>% t() %>% as.tibble()
 p3 <- round(with(cpall_data_elev10,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P90),]),2) %>% t() %>% as.tibble()
 p4 <- round(with(cpall_data_elev10,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P97.5),]),2) %>% t() %>% as.tibble()
-tab_meta_reg_p10 <- bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'), bind_rows(p1,p2,p3,p4))
+tab_meta_reg_p10 <- 
+  bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'), 
+            bind_rows(p1,p2,p3,p4)) %>% 
+  mutate(RR = paste0(allRRfit," (",allRRlow,"—",allRRhigh,")")) %>% select(c(1,2,6)) 
 
 # Estimates for p90 of elevation
 quantis <- round(quantile(data_complete$t_min, probs = c(0.025,0.1,0.9,0.975)),1) %>% tibble(Temperature = .)
@@ -124,8 +127,64 @@ p1 <- round(with(cpall_data_elev90,cbind(allRRfit,allRRlow,allRRhigh)[as.charact
 p2 <- round(with(cpall_data_elev90,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P10),]),2) %>% t() %>% as.tibble()
 p3 <- round(with(cpall_data_elev90,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P90),]),2) %>% t() %>% as.tibble()
 p4 <- round(with(cpall_data_elev90,cbind(allRRfit,allRRlow,allRRhigh)[as.character(P97.5),]),2) %>% t() %>% as.tibble()
-tab_meta_reg_p90 <- bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'), bind_rows(p1,p2,p3,p4))
+tab_meta_reg_p90 <- 
+  bind_cols(quantis, quantis = c('P2.5','P10','P90','P97.5'),
+            bind_rows(p1,p2,p3,p4))%>% 
+  mutate(RR = paste0(allRRfit," (",allRRlow,"—",allRRhigh,")")) %>% select(c(1,2,6)) 
 
 
 write.csv(tab_meta_reg_p10, "02.models/tab_meta_reg_p10.csv")
 write.csv(tab_meta_reg_p90, "02.models/tab_meta_reg_p90.csv")
+
+# Plotting combined image of baseline and elevation models
+p1 <- tibble(fit = cpall_data$allRRfit, low = cpall_data$allRRlow,
+             high = cpall_data$allRRhigh, temp = cpall_data$predvar) %>% 
+  ggplot(aes(x =temp , y = fit))+
+  geom_line()+
+  geom_ribbon(aes(temp, ymin = low, ymax = high),
+              fill = "grey", alpha = 0.5)+
+  geom_vline(xintercept = cen)+
+  geom_hline(yintercept = 1)+
+  xlab("TºC")+
+  ylab("RR")+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 61.1%'))+
+  ggtitle("A" )+
+  scale_y_continuous(limits=c(0.4,1.4))
+
+p2 <- tibble(fit = cpall_data$allRRfit, 
+             low = cpall_data$allRRlow,
+             high = cpall_data$allRRhigh, 
+             temp = cpall_data$predvar,
+             fit10 = cpall_data_elev10$allRRfit, 
+             low10 = cpall_data_elev10$allRRlow,
+             high10 = cpall_data_elev10$allRRhigh,
+             fit90 = cpall_data_elev90$allRRfit,
+             low90 = cpall_data_elev90$allRRlow,
+             high90 = cpall_data_elev90$allRRhigh) %>% 
+  ggplot()+
+  geom_line(aes(x = temp , y = fit))+
+  geom_ribbon(aes(temp, ymin = low, ymax = high),
+              fill = "grey", alpha = 0.5)+
+  geom_line(aes(x =temp , y = fit10, color = "p10"))+
+  geom_line(aes(x =temp , y = low10, color = "p10"), linetype = "dashed")+
+  geom_line(aes(x =temp , y = high10,color = "p10"), linetype = "dashed")+
+  geom_line(aes(x =temp , y = fit90, color = "p90"))+
+  geom_line(aes(x =temp , y = low90, color = "p90"), linetype = "dashed")+
+  geom_line(aes(x =temp , y = high90,color = "p90"), linetype = "dashed")+
+  geom_vline(xintercept = cen)+
+  geom_hline(yintercept = 1)+ labs(color='Elevation')+
+  xlab("TºC")+
+  ylab("RR")+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 53.3%'))+
+  ggtitle("B" )+
+  scale_y_continuous(limits=c(0.4,1.4))
+
+p1+p2
+
+ggsave("03.figs/fig05.png", height = 7, width = 16)
+
+bind_rows(cbind(tab_meta,source="meta"),
+cbind(tab_meta_reg_p10,source="p10"),
+cbind(tab_meta_reg_p90,source="p90")) %>% 
+xlsx::write.xlsx("02.models/tab_meta_all.xlsx")
+
