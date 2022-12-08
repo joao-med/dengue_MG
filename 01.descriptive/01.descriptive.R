@@ -14,38 +14,85 @@ library(xlsx)
 library(patchwork)
 library(gridExtra)
 theme_set(theme_bw())
-setwd("final_codes/final_final_codes")
+# setwd('final_codes/final_final_codes')
+
 # loading data
 data <- read_rds("00.data/data.rds")
 grid <- read.csv("mg_grid.csv") %>% dplyr::select(-X)
 data <- data %>% mutate(code = code %>% as.numeric()) %>% left_join(grid) 
-# Filter for microregions with more than 10.000 cases in the span of time analysed
+# Filter for microregions with more than 10.000 cases in
 filter <- data %>% group_by(code) %>%
-  summarise(sum = sum(cases)) %>%
-  filter (sum >= 10000)
+  summarise(sum = sum(cases),code_meso) %>%
+  filter (sum >= 10000) %>% arrange(code_meso) %>% unique
 # Map minas ---------------------------------------------------------------
-## Minas gerais geometry
-MG <- read_micro_region() %>% filter(abbrev_state %in% "MG")
+############### GRAFICO SEM MESO
+# Minas gerais geometry
+# MG <- read_micro_region() %>% filter(abbrev_state %in% "MG")
+# MG <- read_meso_region() %>% filter(abbrev_state %in% "MG")
+# MG %>% plot
+# MG <- MG %>% mutate(cat = ifelse(code_micro %in% filter$code, "Included", "Excluded"),
+#                     id = 1:66)
+# p1 <- MG %>%
+#   ggplot()+
+#   geom_sf(aes(fill = cat))+
+#   geom_sf_text(aes(label = id),color = 'white')+
+#   scale_fill_manual(values = c("grey", "black"), name = NULL)+
+#   scale_color_discrete(breaks = gtools::mixedsort(MG$name_state))+
+#   theme(legend.text = element_text(margin = margin(0, 0, 0, -24)))+
+#   xlab("")+
+#   ylab("")+
+#   theme_minimal()
+# MG %>%
+#   ggplot()+
+#   geom_sf(aes(fill = ))+
+#   geom_sf_text(aes(label = id),color = 'white')+
+#   scale_fill_manual(values = c("grey", "black"), name = NULL)+
+#   scale_color_discrete(breaks = gtools::mixedsort(MG$name_state))+
+#   theme(legend.text = element_text(margin = margin(0, 0, 0, -24)))+
+#   xlab("")+
+#   ylab("")+
+#   theme_minimal()
+# p1+   tableGrob (cbind(MG$id[1:22],
+#                  MG$name_micro[1:22],
+#                  MG$id[23:44],
+#                  MG$name_micro[23:44],
+#                  MG$id[45:66],
+#                  MG$name_micro[45:66]))
 
-MG <- MG %>% mutate(cat = ifelse(code_micro %in% filter$code, "Included", "Excluded"),
-                    id = 1:66)
-p1 <- MG %>% 
-  ggplot()+
-  geom_sf(aes(fill = cat))+
-  geom_sf_text(aes(label = id),color = 'white')+ 
-  scale_fill_manual(values = c("grey", "black"), name = NULL)+
+#####################
+
+# ggsave("03.figs/fig01.png", height = 7, width = 16)
+MG <- read_micro_region() %>% filter(abbrev_state %in% "MG")
+MG_meso <- read_meso_region() %>% filter(abbrev_state %in% "MG")
+MG <- MG %>% mutate(cat = ifelse(code_micro %in% filter$code, "Included", "Excluded")) %>%
+  left_join(data[,c(1,28,29)] %>% unique, by  = c('code_micro'= 'code')) %>% arrange(code_meso) %>% 
+  mutate(id = 1:66)
+
+p1 <-    
+  ggplot(MG)+
+  geom_sf(data=MG, aes(fill = cat))+
+  geom_sf(data=MG_meso, linetype =1, color = "black", fill= NA, alpha = 1)+
+  geom_sf_text(aes(label = id),color = 'black')+ 
+  scale_fill_manual(values = c("#D3D3D3", "#899499"), name = NULL)+
+  
   scale_color_discrete(breaks = gtools::mixedsort(MG$name_state))+
   theme(legend.text = element_text(margin = margin(0, 0, 0, -24)))+
   xlab("")+
   ylab("")+
   theme_minimal()
-p1+   tableGrob (cbind(MG$id[1:22],
-                 MG$name_micro[1:22],
-                 MG$id[23:44],
-                 MG$name_micro[23:44],
-                 MG$id[45:66],
-                 MG$name_micro[45:66]))
-ggsave("03.figs/fig01.png", height = 7, width = 16)
+
+table_MG <- MG[,c(5,8,10)] %>% sf::st_drop_geometry() %>% as.data.frame()
+colnames(table_MG) <- c("Microrregião", "Mesorregião","ID")
+rownames(table_MG) <- c(NULL)
+p1 + tableGrob (cbind(table_MG[1:22,],
+                       table_MG[23:44,],
+                       table_MG[45:66,]),
+                 rows = c("","","","","","","","","","",
+                          "","","","","","","","","","",
+                          "",""))
+ggsave("03.figs/fig01.png", height = 7, width = 25)
+
+
 # Dengue ------------------------------------------------------------------
 # sum of cases
 summary(data)
@@ -65,7 +112,7 @@ tab_cases <- data %>%
             Rate = round(Sum_cases/Mean_pop*10^5,2),
             annual_cases_mean = round(Sum_cases/10))
 #Saving table
-write.csv(tab_cases, "01.descriptive/tab_cases.csv")
+write.xlsx(tab_cases, "01.descriptive/tab_cases.xlsx")
 
 # Exploring all cases -----------------------------------------------------
 # time series
@@ -141,7 +188,7 @@ yearly_ERA_mg <- MG %>%
 big_table <- tibble()
 for (i in data$microregion_name  %>% unique) {
   temp_data <- data %>% filter(microregion_name  == i)
-  temp <- data$t_min
+  temp <- temp_data$t_min
   cities <- as.vector(data$microregion_name  %>% unique)
   
   # temperature quantis
@@ -173,7 +220,7 @@ for (i in data$microregion_name  %>% unique) {
                       P50,P75,P90,P97.5,
                       Max = summary_temp$Max)
   
-  big_table <- bind_rows(lil_table, big_table)
+  big_table <- bind_rows(lil_table, big_table) %>% arrange(i)
 }
 write.xlsx(big_table, "01.descriptive/table_temp.xlsx")
 ####  maps of average min temperature by microregion
