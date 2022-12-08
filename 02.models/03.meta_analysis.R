@@ -20,7 +20,7 @@ filter <- data_complete %>% group_by(microregion_name) %>%
   filter (sum >= 10000)
 
 data_complete <- data_complete %>% filter(microregion_name %in% filter$microregion_name)
-cen  <-  round(data$t_min %>% mean,0)
+cen  <-  round(data_complete$t_min %>% mean,0)
 # Creating cross-basis
 cb_t_min <- crossbasis(data_complete$t_min, lag = 22, 
                        argvar=list(fun="ns",df=3),
@@ -80,12 +80,6 @@ tibble(fit = cpall_data$allRRfit, low = cpall_data$allRRlow,
   geom_hline(yintercept = 1)+
   xlab("TºC")+
   ylab("RR")
-# 
-# p1 + tableGrob(tab_meta, rows = c("",'','',''))
-# ggsave(filename = paste0("03.figs/fig05.png"), 
-#            height = 5, width = 7, 
-#            units = 'in', dpi = 300)
-
 
 # OVERALL EFFECTS AT PREDICTOR LEVELS (P2.5, P10, P90, P97.5)
 quantis <- round(quantile(data_complete$t_min, probs = c(0.025,0.1,0.9,0.975)),1) %>% tibble(Temperature = .)

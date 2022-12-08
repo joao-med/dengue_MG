@@ -3,6 +3,7 @@ library(tidyverse)
 library(mgcv)
 library(mvmeta) 
 library(dlnm)
+library(patchwork)
 options(scipen=999)
 theme_set(theme_bw())
 
@@ -30,7 +31,6 @@ round(quantile(meanpop,na.rm=T,c(10,90)/100))
 mvpop <- update(mvall,.~meanpop)
 wald_pop<- round(fwald(mvpop,"pop"),3)%>% tibble()
 summary(mvpop)
-
 # GDP
 meanGDP <- sapply(data_mt, function(x) mean(x$PIB,na.rm=T))
 round(quantile(meanGDP,na.rm=T,c(10,90)/100),1)
@@ -93,8 +93,7 @@ wald_values <- bind_rows(wald_pop,wald_GDP,wald_pcGDP,wald_elev,wald_water,
                          wald_waste,wald_urban,wald_lat,wald_long) 
 colnames(wald_values) <- c('Wald_test')
 wald_tab <- bind_cols(Variables = variables, wald_values)
-
-write.csv(wald_tab, "02.models/wald_tab.csv" )
+xlsx::write.xlsx(wald_tab, "02.models/wald_tab.xlsx" )
 
 ## PREDICTION FROM META-REGRESSION
 # elevation
@@ -108,7 +107,7 @@ cpall_data_elev90 <- crosspred(bvar,coef=pred.elev[[2]]$fit,vcov=pred.elev[[2]]$
 plot(cpall_data,type="l",ylab="RR",xlab="TºC",main="")
 lines(cpall_data_elev10,type="l",ylab="RR",xlab="TºC",main="P10",col="blue",ci="lines")
 lines(cpall_data_elev90,type="l",ylab="RR",xlab="TºC",main="P90",col="red",ci="lines")
-text(10,1.54,'I² = 53.3%')
+text(10,1.54,'I² = 58.1%')
 
 # Estimates for p10 of elevation
 quantis <- round(quantile(data_complete$t_min, probs = c(0.025,0.1,0.9,0.975)),1) %>% tibble(Temperature = .)
@@ -147,7 +146,7 @@ p1 <- tibble(fit = cpall_data$allRRfit, low = cpall_data$allRRlow,
   geom_hline(yintercept = 1)+
   xlab("TºC")+
   ylab("RR")+
-  geom_text(aes(x= 10, y = 1.4, label = 'I² = 61.1%'))+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 60.0%'))+
   ggtitle("A" )+
   scale_y_continuous(limits=c(0.4,1.4))
 
@@ -175,7 +174,7 @@ p2 <- tibble(fit = cpall_data$allRRfit,
   geom_hline(yintercept = 1)+ labs(color='Elevation')+
   xlab("TºC")+
   ylab("RR")+
-  geom_text(aes(x= 10, y = 1.4, label = 'I² = 53.3%'))+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 58.1%'))+
   ggtitle("B" )+
   scale_y_continuous(limits=c(0.4,1.4))
 

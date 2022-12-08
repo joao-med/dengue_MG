@@ -60,6 +60,12 @@ sum_AIC8
 sum_AIC_1 <- c(0)
 sum_AIC_2 <- c(0)
 sum_AIC_3 <- c(0)
+sum_AIC_1.1 <- c(0)
+sum_AIC_1.2 <- c(0)
+sum_AIC_1.3 <- c(0)
+sum_AIC_1.4 <- c(0)
+sum_AIC_1.5 <- c(0)
+
 
 for (i in unique(data$microregion_name)){
   # selecting city ----------------------------------------------------------
@@ -70,43 +76,93 @@ for (i in unique(data$microregion_name)){
   data_city$time <- 1:3652
   temp <- data_city$t_min
   # ------------------------------------------------------------------------
-  # Model 1 -----------------------------------------------------------------
-  # Longer lag : 22 days   # 1
-  cb_t_min_long <- crossbasis(temp, lag = 22, 
+  #model 1.4
+  cb_t_min_long <- crossbasis(temp, lag = 30, 
                               argvar=list(fun="ns",df=3),
                               arglag=list(fun="poly",degree=3))
   mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
              family = nb(), data = data_city)
-  
   # AIC Sum ---------------------------------------------------------
-  sum_AIC_1 <- mod$aic + sum_AIC_1
-  print(paste(i, " done model 1"))
-  
-  # Model 2 -----------------------------------------------------------------
-  # Longer lag : 15 days   # 2
-  cb_t_min_mid <- crossbasis(temp, lag = 15, 
-                             argvar=list(fun="ns",df=3),
-                             arglag=list(fun="poly",degree=3))
-  mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_mid + weekday,
+  sum_AIC_1.4 <- mod$aic + sum_AIC_1.4
+  print(paste(i, " done model 1.4"))
+  #model 1.5
+  cb_t_min_long <- crossbasis(temp, lag = 60, 
+                              argvar=list(fun="ns",df=3),
+                              arglag=list(fun="poly",degree=3))
+  mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
              family = nb(), data = data_city)
   # AIC Sum ---------------------------------------------------------
-  sum_AIC_2 <- mod$aic + sum_AIC_2
-  print(paste(i, " done model 2"))
-  # Model 7 -----------------------------------------------------------------
-  # Longer lag : 11 days   # 7
-  cb_t_min_short <- crossbasis(temp, lag = 11, 
-                               argvar=list(fun="ns",df=3),
-                               arglag=list(fun="poly",degree=3))
-  mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_short + weekday,
-             family = nb(), data = data_city)
-  # AIC Sum ---------------------------------------------------------
-  sum_AIC_3 <- mod$aic + sum_AIC_3
-  print(paste(i, " done model 3"))
+  sum_AIC_1.5 <- mod$aic + sum_AIC_1.5
+  print(paste(i, " done model 1.5"))
+  # #model 1.1
+  # cb_t_min_long <- crossbasis(temp, lag = 3, 
+  #                             argvar=list(fun="ns",df=3),
+  #                             arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
+  #            family = nb(), data = data_city)
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_1.1 <- mod$aic + sum_AIC_1.1
+  # print(paste(i, " done model 1.1"))
+  # #model 1.2
+  # cb_t_min_long <- crossbasis(temp, lag = 6, 
+  #                             argvar=list(fun="ns",df=3),
+  #                             arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
+  #            family = nb(), data = data_city)
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_1.2 <- mod$aic + sum_AIC_1.2
+  # print(paste(i, " done model 1.2"))
+  # #model 1.3
+  # cb_t_min_long <- crossbasis(temp, lag = 10, 
+  #                             argvar=list(fun="ns",df=3),
+  #                             arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
+  #            family = nb(), data = data_city)
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_1.3 <- mod$aic + sum_AIC_1.3
+  # print(paste(i, " done model 1.3"))
+  # # Model 1 -----------------------------------------------------------------
+  # # Longer lag : 22 days   # 1
+  # cb_t_min_long <- crossbasis(temp, lag = 22, 
+  #                             argvar=list(fun="ns",df=3),
+  #                             arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_long + weekday,
+  #            family = nb(), data = data_city)
+  # 
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_1 <- mod$aic + sum_AIC_1
+  # print(paste(i, " done model 1"))
+  # 
+  # # Model 2 -----------------------------------------------------------------
+  # # Longer lag : 15 days   # 2
+  # cb_t_min_mid <- crossbasis(temp, lag = 15, 
+  #                            argvar=list(fun="ns",df=3),
+  #                            arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_mid + weekday,
+  #            family = nb(), data = data_city)
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_2 <- mod$aic + sum_AIC_2
+  # print(paste(i, " done model 2"))
+  # # Model 7 -----------------------------------------------------------------
+  # # Longer lag : 11 days   # 7
+  # cb_t_min_short <- crossbasis(temp, lag = 11, 
+  #                              argvar=list(fun="ns",df=3),
+  #                              arglag=list(fun="poly",degree=3))
+  # mod <- gam(cases ~ ns(data_city$time,10*8) + cb_t_min_short + weekday,
+  #            family = nb(), data = data_city)
+  # # AIC Sum ---------------------------------------------------------
+  # sum_AIC_3 <- mod$aic + sum_AIC_3
+  # print(paste(i, " done model 3"))
 }
 
 sum_AIC_1
 sum_AIC_2
 sum_AIC_3
+sum_AIC_1.1 
+sum_AIC_1.2 
+sum_AIC_1.3
+sum_AIC_1.4
+sum_AIC_1.5
 
 # -------------------------------------------------------------------------
 # The model with the lowest AIC was the one with the longer span of lag, in 
