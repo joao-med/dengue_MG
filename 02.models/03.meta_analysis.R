@@ -11,7 +11,6 @@ library(plotrix)
 library(gridExtra)
 theme_set(theme_minimal())
 
-
 # loading data
 data_complete <- read_rds("00.data/data.rds")
 # Filtering microregions with populations more than 10.000 cases in the span of time analysed

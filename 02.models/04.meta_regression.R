@@ -87,8 +87,8 @@ mvlong <- update(mvall,.~meanlon)
 wald_long <- round(fwald(mvlong,"meanlon"),3)%>% tibble()
 summary(mvlong)
 
-variables <- c('Population', 'GDP', 'Per capita GDP', 'Elevation', 'Treated Water Access',
-               'Waste Management', 'Urban Population', 'Latitute', 'Longitude')
+variables <- c('População', 'PIB', 'PIB per capta', 'Altitude', 'Acesso à Tratamento de Água',
+               'Acesso à Coleta de Lixo', 'Porcetagem de População Urbana', 'Latitute', 'Longitude')
 wald_values <- bind_rows(wald_pop,wald_GDP,wald_pcGDP,wald_elev,wald_water,
                          wald_waste,wald_urban,wald_lat,wald_long) 
 colnames(wald_values) <- c('Wald_test')
@@ -146,8 +146,7 @@ p1 <- tibble(fit = cpall_data$allRRfit, low = cpall_data$allRRlow,
   geom_hline(yintercept = 1)+
   xlab("TºC")+
   ylab("RR")+
-  geom_text(aes(x= 10, y = 1.4, label = 'I² = 60.0%'))+
-  ggtitle("A" )+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 60,0%'))+
   scale_y_continuous(limits=c(0.4,1.4))
 
 p2 <- tibble(fit = cpall_data$allRRfit, 
@@ -174,16 +173,24 @@ p2 <- tibble(fit = cpall_data$allRRfit,
   geom_hline(yintercept = 1)+ labs(color='Elevation')+
   xlab("TºC")+
   ylab("RR")+
-  geom_text(aes(x= 10, y = 1.4, label = 'I² = 58.1%'))+
-  ggtitle("B" )+
+  geom_text(aes(x= 10, y = 1.4, label = 'I² = 58,1%'))+
   scale_y_continuous(limits=c(0.4,1.4))
+# layout for plot
+layout <- "
+AAABBB
+AAABBB
+CCDDEE
+"
+p1+
+  p2+
+  tableGrob(mutate_all(tab_meta, ~ str_replace_all(.,"\\.",",")), rows = c("","","",""),cols = c("Temperatura","Percentis","RR"))+
+  tableGrob(mutate_all(wald_tab,~ str_replace_all(.,"\\.",",")), rows = c("","","","","","","","",""), cols= c("Variáveis", "Teste de Wald"))+
+  tableGrob(bind_cols(tab_meta_reg_p10,
+                      tab_meta_reg_p90[,3]) %>% mutate_all(.,~ str_replace_all(.,"\\.",",")),
+            cols = c("Temperatura","Percentis","RR (p10)", "RR (p90)"),
+            rows = c("","","",""))+
+  plot_layout(design = layout)+
+  plot_annotation(tag_levels = 'A')
 
-p1+p2
-
-ggsave("03.figs/fig05.png", height = 7, width = 16)
-
-bind_rows(cbind(tab_meta,source="meta"),
-cbind(tab_meta_reg_p10,source="p10"),
-cbind(tab_meta_reg_p90,source="p90")) %>% 
-xlsx::write.xlsx("02.models/tab_meta_all.xlsx")
+ggsave("03.figs/fig02.png", height = 10, width = 16)
 
